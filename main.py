@@ -1,1 +1,48 @@
+import discord
+from discord.ext import commands
+from gui_converter import convert_instance
+from lxml import etree
+from io import BytesIO
 
+TOKEN = "YOUR_BOT_TOKEN_HERE"
+
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+
+@bot.event
+async def on_ready():
+    print(f"Bot is online as {bot.user}")
+
+
+@bot.command()
+async def convert(ctx):
+    if not ctx.message.attachments:
+        return await ctx.reply("📁 **Attach a .rbxmx file!**")
+
+    file = ctx.message.attachments[0]
+
+    if not file.filename.endswith((".rbxmx", ".rbxm")):
+        return await ctx.reply("❌ File must be `.rbxmx` or `.rbxm`.")
+
+    data = await file.read()
+
+    try:
+        xml = etree.parse(BytesIO(data))
+        root = xml.getroot()
+
+        gui_root = root.find("Item")
+        lua_code = convert_instance(gui_root)
+
+        # Send as text file
+        await ctx.reply(
+            "✅ **GUI converted to Lua!**",
+            file=discord.File(fp=BytesIO(lua_code.encode()), filename="gui.lua")
+        )
+
+    except Exception as e:
+        await ctx.reply(f"❌ Error converting file:\n```\n{e}\n```")
+
+
+bot.run(TOKEN)
