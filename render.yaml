@@ -1,6 +1,10 @@
 services:
   - type: web
-    name: roblox-gui-converter-bot
-    env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python main.py"
+    name: rbxm-converter-bot
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      NODE_VERSION: 20
