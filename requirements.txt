@@ -1,2 +1,2 @@
-py-cord==2.3.3
+discord.py==2.4.0
 lxml==5.2.1
