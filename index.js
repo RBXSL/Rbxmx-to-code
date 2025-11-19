@@ -1,14 +1,10 @@
-#### 5. `index.js`
-```js
 require('dotenv').config();
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds
-  ]
+  intents: [GatewayIntentBits.Guilds]
 });
 
 client.commands = new Collection();
@@ -23,7 +19,7 @@ for (const file of commandFiles) {
 }
 
 client.once('ready', () => {
-  console.log(`✅ ${client.user.tag} is online and ready!`);
+  console.log(`${client.user.tag} is online and ready!`);
 });
 
 client.on('interactionCreate', async interaction => {
