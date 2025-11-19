@@ -5,14 +5,13 @@ from gui_converter import convert_instance
 from lxml import etree
 from io import BytesIO
 
-# Read token from environment variable (set DISCORD_TOKEN in Render)
+# Use environment variable for token
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
     raise ValueError("DISCORD_TOKEN environment variable is not set!")
 
-# Bot setup
 intents = discord.Intents.default()
-intents.message_content = True  # Needed to read messages
+intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
@@ -50,5 +49,4 @@ async def convert(ctx):
     except Exception as e:
         await ctx.reply(f"❌ Error converting file:\n```\n{e}\n```")
 
-# Start the bot
 bot.run(TOKEN)
