@@ -5,7 +5,6 @@ from gui_converter import convert_instance
 from lxml import etree
 from io import BytesIO
 
-# Use environment variable for token
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
     raise ValueError("DISCORD_TOKEN environment variable is not set!")
@@ -40,7 +39,6 @@ async def convert(ctx):
 
         lua_code = convert_instance(gui_root)
 
-        # Send converted Lua as a .lua file
         await ctx.reply(
             "✅ **GUI converted to Lua!**",
             file=discord.File(fp=BytesIO(lua_code.encode()), filename="gui.lua")
