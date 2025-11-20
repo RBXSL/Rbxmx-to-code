@@ -1,51 +1,80 @@
-const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
+require('dotenv').config();
+const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const { parseRbxmxToLua } = require('../utils/rbxmxToLua');
-const { convertRbxmToRbxmx } = require('../utils/rbxmToRbxmx');
 
-module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('convert')
-    .setDescription('Convert .rbxmx or .rbxm GUI to Roblox Lua code')
-    .addAttachmentOption(option =>
-      option.setName('file').setDescription('.rbxmx or .rbxm file').setRequired(true)
-    ),
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds]
+});
 
-  async execute(interaction) {
-    const attachment = interaction.options.getAttachment('file');
-    const fileExt = path.extname(attachment.name).toLowerCase();
+client.commands = new Collection();
 
-    if (!['.rbxmx', '.rbxm'].includes(fileExt)) {
-      return interaction.reply({ content: 'Only .rbxmx and .rbxm files are supported!', ephemeral: true });
+// Load commands
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+  const command = require(path.join(commandsPath, file));
+  client.commands.set(command.data.name, command);
+  console.log(`Loaded command: ${command.data.name}`); // ← Debug line
+}
+
+// Interaction handler
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  const command = client.commands.get(interaction.commandName);
+  if (!command) return;
+
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    await interaction.reply({ content: 'Error executing command!', ephemeral: true });
+  }
+});
+
+// ONE AND ONLY ready handler — logs + registers commands
+client.once('ready', async () => {
+  console.log(`${client.user.tag} is online and ready!`);
+
+  const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+
+  try {
+    const commandsToRegister = client.commands.map(cmd => cmd.data.toJSON());
+
+    if (commandsToRegister.length === 0) {
+      console.error('NO COMMANDS LOADED! Check commands folder.');
+      return;
     }
 
-    await interaction.deferReply();
+    console.log(`Registering ${commandsToRegister.length} command(s):`, commandsToRegister.map(c => c.name));
 
-    const tempDir = path.join(__dirname, '../temp');
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    // REPLACE THIS WITH YOUR SERVER ID
+    const TEST_GUILD_ID = 'YOUR_SERVER_ID_HERE';
 
-    const filePath = path.join(tempDir, attachment.name);
+    // Instant guild commands (appears in <10 seconds)
+    await rest.put(Routes.applicationGuildCommands(client.user.id, TEST_GUILD_ID), {
+      body: commandsToRegister
+    });
+    console.log(`Guild commands registered instantly in ${TEST_GUILD_ID}`);
 
-    try {
-      const response = await require('axios').default.get(attachment.url, { responseType: 'arraybuffer' });
-      fs.writeFileSync(filePath, response.data);
+    // Global commands (can take up to 1 hour)
+    await rest.put(Routes.applicationCommands(client.user.id), {
+      body: commandsToRegister
+    });
+    console.log('Global commands registered (may take time to appear)');
+  } catch (error) {
+    console.error('Failed to register commands:', error);
+  }
+});
 
-      let luaCode;
-      if (fileExt === '.rbxmx') {
-        luaCode = await parseRbxmxToLua(filePath);
-      } else {
-        const rbxmxPath = await convertRbxmToRbxmx(filePath);
-        luaCode = await parseRbxmxToLua(rbxmxPath);
-      }
+client.login(process.env.DISCORD_TOKEN);
 
-      const luaFile = new AttachmentBuilder(Buffer.from(luaCode), { name: 'gui.lua' });
-      await interaction.editReply({ content: 'Here is your perfect Roblox Lua code!', files: [luaFile] });
+// Keep Render alive
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 10000;
 
-    } catch (error) {
-      await interaction.editReply({ content: `Error: ${error.message}` });
-    } finally {
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
-  },
-};
+app.get('/', (req, res) => res.send('Obf#4078 is alive!'));
+app.listen(PORT, '0.0.0.0', () => console.log(`Web server on port ${PORT}`));
