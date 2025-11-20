@@ -23,12 +23,13 @@ client.once('ready', async () => {
   const commands = client.commands.map(c => c.data.toJSON());
 
   try {
-    // Replace 123456789 with your server ID for instant commands
-    await rest.put(Routes.applicationGuildCommands(client.user.id, '123456789'), { body: commands });
+    // Replace 'YOUR_SERVER_ID' with your test server ID for instant commands
+    const guildId = 'YOUR_SERVER_ID';
+    await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commands });
     console.log('Guild commands registered (instant)');
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('Global commands registered');
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error('Registration error:', e); }
 });
 
 client.on('interactionCreate', async i => {
@@ -47,4 +48,4 @@ client.login(process.env.DISCORD_TOKEN);
 const express = require('express');
 const app = express();
 app.get('/', (req, res) => res.send('Bot alive'));
-app.listen(process.env.PORT || 3000);
+app.listen(process.env.PORT || 3000, () => console.log('Web server running'));
