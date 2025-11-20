@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -18,10 +18,6 @@ for (const file of commandFiles) {
   client.commands.set(command.data.name, command);
 }
 
-client.once('ready', () => {
-  console.log(`${client.user.tag} is online and ready!`);
-});
-
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -36,10 +32,39 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
+// Merged ready handler: Log + register commands
+client.once('ready', async () => {
+  console.log(`${client.user.tag} is online and ready!`);
+
+  const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+
+  try {
+    console.log('Started refreshing application (/) commands...');
+    const commandBody = client.commands.map(cmd => cmd.data.toJSON());
+
+    if (commandBody.length === 0) {
+      console.error('ERROR: No commands loaded! Check commands/convert.js exists and exports { data, execute }');
+      return;
+    }
+
+    console.log(`Registering ${commandBody.length} command(s)...`);
+
+    // Guild-specific (instant, replace with your server ID)
+    const guildId = 'YOUR_TEST_GUILD_ID'; // e.g., '123456789012345678' — get from Discord Developer Mode
+    await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commandBody });
+    console.log(`✅ Guild commands registered to ${guildId}! (Instant sync)`);
+
+    // Global (15-60 min delay)
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commandBody });
+    console.log('✅ Global commands registered! (May take 15-60 min to appear everywhere)');
+  } catch (error) {
+    console.error('❌ Error registering commands:', error);
+  }
+});
+
 client.login(process.env.DISCORD_TOKEN);
 
-// ──────────────────────────────
-// 1. Fix Render port timeout (keeps service alive)
+// Dummy HTTP server to satisfy Render's port requirement
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -50,25 +75,4 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Dummy web server running on port ${PORT}`);
-});
-
-// ──────────────────────────────
-// 2. Register the /convert command globally (once when bot starts)
-const { REST, Routes } = require('discord.js');
-
-const rest = new REST().setToken(process.env.DISCORD_TOKEN);
-
-client.once('ready', async () => {
-  console.log(`${client.user.tag} is online and ready!`);
-
-  try {
-    console.log('Started refreshing application (/) commands...');
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: client.commands.map(cmd => cmd.data.toJSON()) }
-    );
-    console.log('Successfully registered /convert command globally!');
-  } catch (error) {
-    console.error('Error registering commands:', error);
-  }
 });
