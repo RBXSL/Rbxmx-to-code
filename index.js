@@ -32,7 +32,7 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// Merged ready handler: Log + register commands
+// SINGLE merged ready handler: Log + register commands
 client.once('ready', async () => {
   console.log(`${client.user.tag} is online and ready!`);
 
@@ -43,20 +43,20 @@ client.once('ready', async () => {
     const commandBody = client.commands.map(cmd => cmd.data.toJSON());
 
     if (commandBody.length === 0) {
-      console.error('ERROR: No commands loaded! Check commands/convert.js exists and exports { data, execute }');
+      console.error('ERROR: No commands loaded! Check commands/convert.js exists and is valid.');
       return;
     }
 
     console.log(`Registering ${commandBody.length} command(s)...`);
 
-    // Guild-specific (instant, replace with your server ID)
-    const guildId = 'YOUR_TEST_GUILD_ID'; // e.g., '123456789012345678' — get from Discord Developer Mode
+    // Guild-specific registration (INSTANT sync - replace with your server ID)
+    const guildId = '1390985193590100068'; // e.g., '123456789012345678'
     await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commandBody });
-    console.log(`✅ Guild commands registered to ${guildId}! (Instant sync)`);
+    console.log(`✅ Guild commands registered to ${guildId}! (Instant - try / now)`);
 
-    // Global (15-60 min delay)
+    // Global registration (15-60 min delay)
     await rest.put(Routes.applicationCommands(client.user.id), { body: commandBody });
-    console.log('✅ Global commands registered! (May take 15-60 min to appear everywhere)');
+    console.log('✅ Global commands registered! (May take time to appear everywhere)');
   } catch (error) {
     console.error('❌ Error registering commands:', error);
   }
