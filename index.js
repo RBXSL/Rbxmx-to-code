@@ -3,76 +3,48 @@ const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord
 const fs = require('fs');
 const path = require('path');
 
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
-});
-
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
 // Load commands
 const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'));
 
 for (const file of commandFiles) {
   const command = require(path.join(commandsPath, file));
   client.commands.set(command.data.name, command);
+  console.log(`Loaded: ${command.data.name}`);
 }
 
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-
-  try {
-    await command.execute(interaction);
-  } catch (error) {
-    console.error(error);
-    await interaction.reply({ content: 'There was an error executing that command!', ephemeral: true });
-  }
-});
-
-// SINGLE merged ready handler: Log + register commands
 client.once('ready', async () => {
-  console.log(`${client.user.tag} is online and ready!`);
+  console.log(`${client.user.tag} is online!`);
 
   const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+  const commands = client.commands.map(c => c.data.toJSON());
 
   try {
-    console.log('Started refreshing application (/) commands...');
-    const commandBody = client.commands.map(cmd => cmd.data.toJSON());
+    // Replace 123456789 with your server ID for instant commands
+    await rest.put(Routes.applicationGuildCommands(client.user.id, '123456789'), { body: commands });
+    console.log('Guild commands registered (instant)');
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+    console.log('Global commands registered');
+  } catch (e) { console.error(e); }
+});
 
-    if (commandBody.length === 0) {
-      console.error('ERROR: No commands loaded! Check commands/convert.js exists and is valid.');
-      return;
-    }
-
-    console.log(`Registering ${commandBody.length} command(s)...`);
-
-    // Guild-specific registration (INSTANT sync - replace with your server ID)
-    const guildId = '1390985193590100068'; // e.g., '123456789012345678'
-    await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commandBody });
-    console.log(`✅ Guild commands registered to ${guildId}! (Instant - try / now)`);
-
-    // Global registration (15-60 min delay)
-    await rest.put(Routes.applicationCommands(client.user.id), { body: commandBody });
-    console.log('✅ Global commands registered! (May take time to appear everywhere)');
-  } catch (error) {
-    console.error('❌ Error registering commands:', error);
+client.on('interactionCreate', async i => {
+  if (!i.isChatInputCommand()) return;
+  const cmd = client.commands.get(i.commandName);
+  if (!cmd) return;
+  try { await cmd.execute(i); } catch (e) {
+    console.error(e);
+    await i.reply({ content: 'Error!', ephemeral: true });
   }
 });
 
 client.login(process.env.DISCORD_TOKEN);
 
-// Dummy HTTP server to satisfy Render's port requirement
+// Keep Render alive
 const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 10000;
-
-app.get('/', (req, res) => {
-  res.send('Obf#4078 is alive and converting GUIs! 🚀');
-});
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Dummy web server running on port ${PORT}`);
-});
+app.get('/', (req, res) => res.send('Bot alive'));
+app.listen(process.env.PORT || 3000);
