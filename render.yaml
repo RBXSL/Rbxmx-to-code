@@ -1,10 +1,7 @@
 services:
   - type: web
-    name: rbxm-converter-bot
+    name: rbxmx-converter
     env: node
-    plan: free
     buildCommand: npm install
-    startCommand: npm start
-    autoDeploy: true
-    envVars:
-      NODE_VERSION: 20
+    startCommand: node index.js
+    healthCheckPath: /
