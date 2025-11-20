@@ -1,19 +1,12 @@
 {
-  "name": "discord-rbxm-to-lua-converter",
+  "name": "rbxmx-converter",
   "version": "1.0.0",
-  "description": "Discord bot that converts .rbxmx/.rbxm GUI files to Roblox Lua code",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "keywords": ["discord", "roblox", "converter", "rbxmx", "lua"],
-  "author": "",
-  "license": "MIT",
+  "scripts": { "start": "node index.js" },
   "dependencies": {
     "discord.js": "^14.16.3",
+    "axios": "^1.7.7",
     "xml2js": "^0.6.2",
-    "dotenv": "^16.4.5",
-    "axios": "^1.7.2",
     "express": "^4.21.1"
   }
 }
