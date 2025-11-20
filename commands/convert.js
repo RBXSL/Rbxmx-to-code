@@ -8,57 +8,43 @@ const { convertRbxmToRbxmx } = require('../utils/rbxmToRbxmx');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('convert')
-    .setDescription('Convert .rbxmx or .rbxm GUI to Roblox Lua code')
-    .addAttachmentOption(option =>
-      option
-        .setName('file')
-        .setDescription('.rbxmx or .rbxm file')
-        .setRequired(true)
-    ),
+    .setDescription('Convert .rbxmx/.rbxm to Lua')
+    .addAttachmentOption(o => o.setName('file').setDescription('GUI file').setRequired(true)),
 
   async execute(interaction) {
     const file = interaction.options.getAttachment('file');
-    if (!file.name.endsWith('.rbxmx') && !file.name.endsWith('.rbxm')) {
-      return interaction.reply({ content: 'Only .rbxmx and .rbxm files!', ephemeral: true });
+    if (!file.name.match(/\.(rbxm|rbxmx)$/i)) {
+      return interaction.reply({ content: 'Only .rbxmx/.rbxm!', ephemeral: true });
     }
 
     await interaction.deferReply();
-
     const tempDir = path.join(__dirname, '../temp');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
     const filePath = path.join(tempDir, file.name);
 
     try {
-      // Critical: Discord now blocks downloads without proper headers
-      const response = await axios.get(file.url, {
+      const res = await axios.get(file.url, {
         responseType: 'arraybuffer',
         headers: { 'User-Agent': 'DiscordBot' }
       });
-      fs.writeFileSync(filePath, response.data);
+      fs.writeFileSync(filePath, res.data);
 
-      let luaCode;
+      let lua;
       if (file.name.endsWith('.rbxmx')) {
-        luaCode = await parseRbxmxToLua(filePath);
+        lua = await parseRbxmxToLua(filePath);
       } else {
         const rbxmxPath = await convertRbxmToRbxmx(filePath);
-        luaCode = await parseRbxmxToLua(rbxmxPath);
+        lua = await parseRbxmxToLua(rbxmxPath);
       }
 
-      const luaFile = new AttachmentBuilder(Buffer.from(luaCode), { name: 'gui.lua' });
+      const attachment = new AttachmentBuilder(Buffer.from(lua), { name: 'gui.lua' });
+      await interaction.editReply({ content: 'Perfect Lua code!', files: [attachment] });
 
-      await interaction.editReply({
-        content: 'Here is your perfect Roblox Lua code!',
-        files: [luaFile]
-      });
-
-    } catch (error) {
-      console.error(error);
-      await interaction.editReply({ content: `Error: ${error.message}` });
+    } catch (e) {
+      console.error(e);
+      await interaction.editReply({ content: `Error: ${e.message}` });
     } finally {
-      // Cleanup
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      const tempRbxmx = filePath.replace('.rbxm', '.rbxmx');
-      if (fs.existsSync(tempRbxmx)) fs.unlinkSync(tempRbxmx);
+      [filePath, filePath.replace('.rbxm', '.rbxmx')].forEach(f => fs.existsSync(f) && fs.unlinkSync(f));
     }
   }
 };
